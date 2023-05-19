@@ -64,8 +64,7 @@ public class PlayerController : MonoBehaviour
 
         Vector3 movement = new Vector3(hAxis * speed, 0f, 0f);
         body.MovePosition(transform.position + movement * Time.deltaTime);
-        animator.SetFloat("speed", Mathf.Abs(hAxis) * speed);
-
+        
         if (hAxis < 0)
         {
             sprite.flipX = true;
@@ -74,6 +73,8 @@ public class PlayerController : MonoBehaviour
         {
             sprite.flipX = false;
         }
+
+        animator.SetFloat("speed", Mathf.Abs(hAxis) * speed);
     }
 
     void JumpHandler()
