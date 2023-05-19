@@ -1,5 +1,7 @@
 using UnityEngine;
+using System.Collections;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
@@ -9,20 +11,33 @@ public class PlayerController : MonoBehaviour
     public LayerMask terrainLayer;
     public Rigidbody body;
     public SpriteRenderer sprite;
+    public Canvas hud;
+    public float knockbackForce;
+    public GameObject healthContainer;
 
+    public int maxLives = 6;
+    public float invincibilityDuration = 2f;
+
+    private int currentLives;
+    private Color spriteColor;
+    private Collider coll;
+    private Image[] hearts;
+
+    private bool isInvincible = false;
     private bool isMovingLeft = false;
     private bool isMovingRight = false;
     private bool isJumping = false;
     private bool isAttacking = false;
     private bool alreadyJumping = false;
-    private bool isGrounded;
-    private Collider coll;
-
+    
     void Start()
     {
+        currentLives = maxLives;
         body = gameObject.GetComponent<Rigidbody>();
         animator = gameObject.GetComponentInChildren<Animator>();
         coll = GetComponent<Collider>();
+        FindHearts();
+        InitializeHUD();
     }
 
     void Update()
@@ -34,14 +49,18 @@ public class PlayerController : MonoBehaviour
 
     void WalkHandler()
     {
-        body.velocity = new Vector3(body.velocity.x, 0f, 0f);
+        body.velocity = new Vector3(body.velocity.x, body.velocity.y, 0f);
 
         float hAxis = 0f;
 
         if (isMovingLeft)
+        {
             hAxis = -1f;
+        }
         else if (isMovingRight)
+        {
             hAxis = 1f;
+        }
 
         Vector3 movement = new Vector3(hAxis * speed, 0f, 0f);
         body.MovePosition(transform.position + movement * Time.deltaTime);
@@ -59,22 +78,21 @@ public class PlayerController : MonoBehaviour
 
     void JumpHandler()
     {
-        isGrounded = CheckGrounded();
+        bool isGrounded = CheckGrounded();
 
-        if (isJumping)
+        if (isJumping && isGrounded && !alreadyJumping)
         {
-            if (!alreadyJumping && isGrounded)
-            {
-                alreadyJumping = true;
-                body.velocity = body.velocity + new Vector3(0f, jumpForce, 0f);
-                animator.SetTrigger("jump");
-            }
+            alreadyJumping = true;
+            body.velocity = new Vector3(body.velocity.x, jumpForce, body.velocity.z);
+            animator.SetTrigger("jump");
         }
-        else
+
+        if (isGrounded)
         {
             alreadyJumping = false;
         }
     }
+
 
     void AttackHandler()
     {
@@ -103,9 +121,73 @@ public class PlayerController : MonoBehaviour
         return grounded1 || grounded2 || grounded3 || grounded4;
     }
 
-    public void HandleEnemyCollision()
+    void FindHearts()
     {
-        gameObject.SetActive(false);
+        hearts = healthContainer.GetComponentsInChildren<Image>();
+    }
+
+    void InitializeHUD()
+    {
+        foreach (Image heart in hearts)
+        {
+            heart.gameObject.SetActive(false);
+        }
+        
+        int heartCount = Mathf.Min(currentLives, hearts.Length);
+        for (int i = 0; i < heartCount; i++)
+        {
+            hearts[i].gameObject.SetActive(true);
+        }
+    }
+
+    void UpdateHUD()
+    {
+        for (int i = 0; i < hearts.Length; i++)
+        {
+            hearts[i].gameObject.SetActive(i < currentLives);
+        }
+    }
+
+    public void HandleEnemyCollision(GameObject enemy)
+    {
+        currentLives--;
+        UpdateHUD();
+
+        if (currentLives <= 0)
+        {
+            gameObject.SetActive(false);
+        }
+        else
+        {
+            Vector3 knockbackDirection = transform.position - enemy.transform.position;
+            knockbackDirection.y = 0f;
+            knockbackDirection.Normalize();
+            body.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+            StartCoroutine(InvincibilityFrames());
+        }
+    }
+
+    IEnumerator InvincibilityFrames()
+    {
+        isInvincible = true;
+        StartCoroutine(Flash());
+        yield return new WaitForSeconds(invincibilityDuration);
+        isInvincible = false;
+    }
+
+    IEnumerator Flash()
+    {
+        Color originalColor = sprite.color;
+        Color transparentColor = new Color(originalColor.r, originalColor.g, originalColor.b, 0f);
+
+        for (int n = 0; n < 2; n++)
+        {
+            sprite.color = transparentColor;
+            yield return new WaitForSeconds(0.1f);
+            sprite.color = originalColor;
+            yield return new WaitForSeconds(0.1f);
+        }
+        sprite.color = originalColor;
     }
 
     public void SetMovingLeft(bool value)
