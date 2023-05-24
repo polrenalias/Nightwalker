@@ -28,6 +28,10 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
         {
             playerController.SetAttacking(true);
         }
+        else if (gameObject.name == "DefendButton")
+        {
+            playerController.SetDefending(true);
+        }
     }
 
     public void OnPointerUp(PointerEventData eventData)
@@ -47,6 +51,10 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
         else if (gameObject.name == "AttackButton")
         {
             playerController.SetAttacking(false);
+        }
+        else if (gameObject.name == "DefendButton")
+        {
+            playerController.SetDefending(false);
         }
     }
 }

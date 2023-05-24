@@ -14,6 +14,10 @@ public class PlayerController : MonoBehaviour
     public Canvas hud;
     public float knockbackForce;
     public GameObject healthContainer;
+    public GameObject colMessage;
+    public AudioClip swordSwing;
+    public AudioClip barrierWave;
+    public LevelManager manager;
 
     public int maxLives = 6;
     public float invincibilityDuration = 2f;
@@ -22,17 +26,24 @@ public class PlayerController : MonoBehaviour
     private Color spriteColor;
     private Collider coll;
     private Image[] hearts;
+    private AudioSource audioSource;
 
     private bool isInvincible = false;
     private bool isMovingLeft = false;
     private bool isMovingRight = false;
     private bool isJumping = false;
+    private bool isDefending = false;
     private bool isAttacking = false;
     private bool alreadyJumping = false;
+    private bool isBarrierCasted = false;
+    private bool isCollidingWithWall = false;
+    private int deathCount;
+    private int killCount;
     
     void Start()
     {
         currentLives = maxLives;
+        audioSource = GetComponent<AudioSource>();
         body = gameObject.GetComponent<Rigidbody>();
         animator = gameObject.GetComponentInChildren<Animator>();
         coll = GetComponent<Collider>();
@@ -40,11 +51,23 @@ public class PlayerController : MonoBehaviour
         InitializeHUD();
     }
 
+    void Awake() {
+        manager.SetLastLevel(1);
+        killCount = manager.GetKillCount();
+        deathCount = manager.GetDeathCount();
+    }
+
+    void OnApplicationPause()
+    {
+        manager.SetLastLevel(1);
+    }
+
     void Update()
     {
         WalkHandler();
         JumpHandler();
         AttackHandler();
+        DefenseHandler();       
     }
 
     void WalkHandler()
@@ -99,8 +122,32 @@ public class PlayerController : MonoBehaviour
     {
         if (isAttacking)
         {
+            PlaySwordSound();
             animator.SetTrigger("attack");
         }
+    }
+
+    void DefenseHandler()
+    {
+        if (isDefending)
+        {
+            StartCoroutine(Barrier());
+        }
+    }
+
+    IEnumerator Barrier()
+    {   
+        animator.SetTrigger("start_defend");
+        float defenseDuration = 4f;
+        isBarrierCasted = true;
+        PlayBarrierSound();
+
+        yield return new WaitForSeconds(defenseDuration);
+        
+        isBarrierCasted = false;
+        //StopBarrierSound();
+        animator.SetTrigger("stop_defend");
+        
     }
 
     bool CheckGrounded()
@@ -149,8 +196,67 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void PlaySwordSound()
+    {
+        audioSource.clip = swordSwing;
+        audioSource.Play();
+    }
+
+    private void PlayBarrierSound()
+    {
+        audioSource.clip = barrierWave;
+        audioSource.Play();
+    }
+
+    /*private void StopBarrierSound()
+    {
+        audioSource.clip = barrierWave;
+        audioSource.Stop();
+    }*/
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("InvisibleWall"))
+        {   
+            colMessage.SetActive(true);
+        }
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("InvisibleWall"))
+        {
+             Vector3 collisionNormal = collision.contacts[0].normal;
+
+            if (collisionNormal.x > 0)
+            {
+                SetMovingLeft(false);
+            }
+            else if (collisionNormal.x < 0)
+            {
+                SetMovingRight(false);
+            }
+
+            body.MovePosition(transform.position + Vector3.zero * Time.deltaTime);
+            animator.SetFloat("speed", 0);
+        }
+    }
+
+    void OnCollisionExit(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("InvisibleWall"))
+        {
+            colMessage.SetActive(false);
+        }
+    }
+
     public void HandleEnemyCollision(GameObject enemy)
     {
+        if (isBarrierCasted)
+        {
+            return;
+        }
+        
         currentLives--;
         UpdateHUD();
 
@@ -209,5 +315,10 @@ public class PlayerController : MonoBehaviour
     public void SetAttacking(bool value)
     {
         isAttacking = value;
+    }
+
+    public void SetDefending(bool value)
+    {
+        isDefending = value;
     }
 }
