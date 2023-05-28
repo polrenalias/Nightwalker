@@ -2,31 +2,35 @@ using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Linq;
 
 public class PlayerController : MonoBehaviour
 {
     public float speed;
     public float jumpForce;
+    public float knockbackForce;
     public Animator animator;
     public LayerMask terrainLayer;
     public Rigidbody body;
     public SpriteRenderer sprite;
     public Canvas hud;
-    public float knockbackForce;
     public GameObject healthContainer;
     public GameObject colMessage;
     public AudioClip swordSwing;
     public AudioClip barrierWave;
     public LevelManager manager;
+    public Slider barrierBar;
 
     public int maxLives = 6;
     public float invincibilityDuration = 2f;
 
-    private int currentLives;
     private Color spriteColor;
     private Collider coll;
     private Image[] hearts;
     private AudioSource audioSource;
+    private int deathCount;
+    private int killCount;
+    private int currentLives;
 
     private bool isInvincible = false;
     private bool isMovingLeft = false;
@@ -34,11 +38,15 @@ public class PlayerController : MonoBehaviour
     private bool isJumping = false;
     private bool isDefending = false;
     private bool isAttacking = false;
-    private bool alreadyJumping = false;
     private bool isBarrierCasted = false;
     private bool isCollidingWithWall = false;
-    private int deathCount;
-    private int killCount;
+    private bool alreadyJumping = false;
+    private bool alreadyAttacking = false;
+    private bool firstTimeDefense = true;
+    private float barrierCooldown = 0f;
+    private float lastBarrierTime = 0f;
+    private float attackCooldown = 1f;
+    private float lastAttackTime = 0f;
     
     void Start()
     {
@@ -103,7 +111,7 @@ public class PlayerController : MonoBehaviour
     void JumpHandler()
     {
         bool isGrounded = CheckGrounded();
-
+        
         if (isJumping && isGrounded && !alreadyJumping)
         {
             alreadyJumping = true;
@@ -117,19 +125,26 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     void AttackHandler()
     {
-        if (isAttacking)
+        bool onGround = CheckGrounded();
+
+        if (isAttacking && !alreadyAttacking && Time.time >= lastAttackTime + attackCooldown)
         {
-            PlaySwordSound();
-            animator.SetTrigger("attack");
+            if (onGround)
+            {
+                alreadyAttacking = true;
+                animator.SetTrigger("attack");
+                PlaySwordSound();
+                lastAttackTime = Time.time;
+                alreadyAttacking = false;
+            }
         }
     }
 
     void DefenseHandler()
     {
-        if (isDefending)
+        if (isDefending && !isBarrierCasted && Time.time - lastBarrierTime >= barrierCooldown && barrierBar.value == 1)
         {
             StartCoroutine(Barrier());
         }
@@ -138,16 +153,34 @@ public class PlayerController : MonoBehaviour
     IEnumerator Barrier()
     {   
         animator.SetTrigger("start_defend");
-        float defenseDuration = 4f;
         isBarrierCasted = true;
         PlayBarrierSound();
+        barrierBar.value = 0;
+        lastBarrierTime = Time.time; 
 
-        yield return new WaitForSeconds(defenseDuration);
+        yield return new WaitForSeconds(4f);
         
         isBarrierCasted = false;
-        //StopBarrierSound();
         animator.SetTrigger("stop_defend");
-        
+        StartCoroutine(BarrierCooldown());
+    }
+
+    IEnumerator BarrierCooldown()
+    {
+        if (firstTimeDefense == true) {
+            barrierCooldown = 12f;
+            firstTimeDefense = false;
+        }
+
+        float elapsedTime = 0f;
+        while (elapsedTime < barrierCooldown)
+        {
+            elapsedTime += Time.deltaTime;
+            float fillAmount = Mathf.Clamp01(elapsedTime / barrierCooldown);
+            barrierBar.value = fillAmount;
+            yield return null;
+        }
+        barrierBar.value = 1;
     }
 
     bool CheckGrounded()
@@ -176,6 +209,7 @@ public class PlayerController : MonoBehaviour
 
     void InitializeHUD()
     {
+        barrierBar.value = 1;
         foreach (Image heart in hearts)
         {
             heart.gameObject.SetActive(false);
@@ -207,12 +241,6 @@ public class PlayerController : MonoBehaviour
         audioSource.clip = barrierWave;
         audioSource.Play();
     }
-
-    /*private void StopBarrierSound()
-    {
-        audioSource.clip = barrierWave;
-        audioSource.Stop();
-    }*/
 
     void OnCollisionEnter(Collision collision)
     {
@@ -276,9 +304,13 @@ public class PlayerController : MonoBehaviour
 
     IEnumerator InvincibilityFrames()
     {
+        Color originalColor = sprite.color;
         isInvincible = true;
         StartCoroutine(Flash());
+
         yield return new WaitForSeconds(invincibilityDuration);
+        sprite.color = originalColor;
+
         isInvincible = false;
     }
 
