@@ -1,9 +1,11 @@
+// Import necessary libraries
 using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Linq;
 
+// PlayerController class responsible for controlling player behavior
 public class PlayerController : MonoBehaviour
 {
     public float speed;
@@ -48,6 +50,7 @@ public class PlayerController : MonoBehaviour
     private float attackCooldown = 1f;
     private float lastAttackTime = 0f;
     
+    // Initialize necessary components
     void Start()
     {
         currentLives = maxLives;
@@ -59,17 +62,21 @@ public class PlayerController : MonoBehaviour
         InitializeHUD();
     }
 
-    void Awake() {
+    // Set the statistics-related values from the LevelManager on start
+    void Awake()
+    {
         manager.SetLastLevel(1);
         killCount = manager.GetKillCount();
         deathCount = manager.GetDeathCount();
     }
 
+    // Set the statistics-related values from the LevelManager on pause/exit
     void OnApplicationPause()
     {
         manager.SetLastLevel(1);
     }
 
+    // Handle player actions
     void Update()
     {
         WalkHandler();
@@ -78,6 +85,7 @@ public class PlayerController : MonoBehaviour
         DefenseHandler();       
     }
 
+    // Handle player movement
     void WalkHandler()
     {
         body.velocity = new Vector3(body.velocity.x, body.velocity.y, 0f);
@@ -108,6 +116,7 @@ public class PlayerController : MonoBehaviour
         animator.SetFloat("speed", Mathf.Abs(hAxis) * speed);
     }
 
+    // Check if the player is grounded and handle jumping
     void JumpHandler()
     {
         bool isGrounded = CheckGrounded();
@@ -125,6 +134,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Handle player's attack
     void AttackHandler()
     {
         bool onGround = CheckGrounded();
@@ -142,6 +152,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Handle player's defense (casting barrier)
     void DefenseHandler()
     {
         if (isDefending && !isBarrierCasted && Time.time - lastBarrierTime >= barrierCooldown && barrierBar.value == 1)
@@ -152,6 +163,7 @@ public class PlayerController : MonoBehaviour
 
     IEnumerator Barrier()
     {   
+        // Activate the barrier and play the barrier sound
         animator.SetTrigger("start_defend");
         isBarrierCasted = true;
         PlayBarrierSound();
@@ -160,14 +172,17 @@ public class PlayerController : MonoBehaviour
 
         yield return new WaitForSeconds(4f);
         
+        // Deactivate the barrier and start the barrier cooldown
         isBarrierCasted = false;
         animator.SetTrigger("stop_defend");
         StartCoroutine(BarrierCooldown());
     }
 
+    // Set the cooldown time for the defense action
     IEnumerator BarrierCooldown()
     {
-        if (firstTimeDefense == true) {
+        if (firstTimeDefense == true)
+        {
             barrierCooldown = 12f;
             firstTimeDefense = false;
         }
@@ -183,6 +198,7 @@ public class PlayerController : MonoBehaviour
         barrierBar.value = 1;
     }
 
+    // Check if the player is grounded by raycasting from the corners of the collider
     bool CheckGrounded()
     {
         float sizeX = coll.bounds.size.x;
@@ -202,11 +218,13 @@ public class PlayerController : MonoBehaviour
         return grounded1 || grounded2 || grounded3 || grounded4;
     }
 
+    // Find all the heart images in the health container
     void FindHearts()
     {
         hearts = healthContainer.GetComponentsInChildren<Image>();
     }
 
+    // Initialize the heads-up display (HUD) by setting the barrier bar value to 1 and activating the hearts based on the current number of lives
     void InitializeHUD()
     {
         barrierBar.value = 1;
@@ -222,6 +240,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Update the HUD by activating or deactivating hearts based on the current number of lives
     void UpdateHUD()
     {
         for (int i = 0; i < hearts.Length; i++)
@@ -230,31 +249,26 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Play the sound effect for the sword swing
     private void PlaySwordSound()
     {
         audioSource.clip = swordSwing;
         audioSource.Play();
     }
 
+    // Play the sound effect for the energy barrier
     private void PlayBarrierSound()
     {
         audioSource.clip = barrierWave;
         audioSource.Play();
     }
 
-    void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("InvisibleWall"))
-        {   
-            colMessage.SetActive(true);
-        }
-    }
-
+    // Handle the player colliding with an invisible wall by preventing movement in the colliding direction
     void OnCollisionStay(Collision collision)
     {
         if (collision.gameObject.CompareTag("InvisibleWall"))
         {
-             Vector3 collisionNormal = collision.contacts[0].normal;
+            Vector3 collisionNormal = collision.contacts[0].normal;
 
             if (collisionNormal.x > 0)
             {
@@ -270,6 +284,16 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Display a message when the player is colliding with an invisible wall
+    void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("InvisibleWall"))
+        {   
+            colMessage.SetActive(true);
+        }
+    }
+
+    // Stop displaying a message when the player is no longer colliding with an invisible wall
     void OnCollisionExit(Collision collision)
     {
         if (collision.gameObject.CompareTag("InvisibleWall"))
@@ -278,6 +302,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Handle the player colliding with an enemy by reducing lives, updating the HUD, applying knockback, and starting invincibility frames
     public void HandleEnemyCollision(GameObject enemy)
     {
         if (isBarrierCasted)
@@ -302,6 +327,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Apply invincibility frames for a duration and flash the player sprite during that time
     IEnumerator InvincibilityFrames()
     {
         Color originalColor = sprite.color;
@@ -314,6 +340,7 @@ public class PlayerController : MonoBehaviour
         isInvincible = false;
     }
 
+    // Flash the player sprite between transparent and original color to create a visual effect during invincibility frames
     IEnumerator Flash()
     {
         Color originalColor = sprite.color;
@@ -329,26 +356,31 @@ public class PlayerController : MonoBehaviour
         sprite.color = originalColor;
     }
 
+    // Set the flag for moving left
     public void SetMovingLeft(bool value)
     {
         isMovingLeft = value;
     }
 
+    // Set the flag for moving right
     public void SetMovingRight(bool value)
     {
         isMovingRight = value;
     }
 
+    // Set the flag for jumping
     public void SetJumping(bool value)
     {
         isJumping = value;
     }
 
+    // Set the flag for attacking
     public void SetAttacking(bool value)
     {
         isAttacking = value;
     }
 
+    // Set the flag for defending
     public void SetDefending(bool value)
     {
         isDefending = value;

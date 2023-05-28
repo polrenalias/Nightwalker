@@ -1,16 +1,27 @@
+// Import necessary libraries
 using UnityEngine;
 
+// EnemyController class responsible for controlling enemy behavior
 public class EnemyController : MonoBehaviour
 {
+    // Reference to the enemy's sprite renderer
     public SpriteRenderer sprite;
 
+    // Movement speed of the enemy
     public float movementSpeed = 5f;
+
+    // X position at which the enemy despawns
     public float despawnX = -10f;
+
+    // Distance at which the enemy changes direction
     public float changeDirectionDistance = 5f;
+
+    // Duration of idle state before changing direction
     public float idleDuration = 2f;
 
+    // Direction check
     private bool isMovingRight = false;
-    
+
     private Vector3 originalSpawnPosition;
     private float idleTimer;
     private bool isIdle;
@@ -18,7 +29,10 @@ public class EnemyController : MonoBehaviour
 
     private void Start()
     {
+        // Store the original spawn position of the enemy
         originalSpawnPosition = transform.position;
+
+        // Reset the idle timer and get the animator component
         ResetIdleTimer();
         animator = GetComponentInChildren<Animator>();
     }
@@ -27,10 +41,13 @@ public class EnemyController : MonoBehaviour
     {
         if (isIdle)
         {
+            // Countdown the idle timer
             idleTimer -= Time.deltaTime;
+
             if (idleTimer <= 0f)
             {
-                flipSprite();
+                // Flip the sprite, exit idle state, reset idle timer, and start moving
+                FlipSprite();
                 isIdle = false;
                 ResetIdleTimer();
                 animator.SetBool("isMoving", true);
@@ -38,7 +55,7 @@ public class EnemyController : MonoBehaviour
         }
         else
         {
-            // Move the enemy in the desired direction
+            // Move the enemy in the desired direction based on the current movement state
             Vector3 movement = (isMovingRight ? Vector3.right : Vector3.left) * movementSpeed * Time.deltaTime;
             transform.Translate(movement);
 
@@ -46,47 +63,40 @@ public class EnemyController : MonoBehaviour
             float distanceFromSpawn = Mathf.Abs(transform.position.x - originalSpawnPosition.x);
             if (distanceFromSpawn >= changeDirectionDistance)
             {
+                // Change direction, enter idle state, and stop moving
                 isMovingRight = !isMovingRight;
                 isIdle = true;
                 animator.SetBool("isMoving", false);
             }
         }
-
-        /*
-        if (transform.position.x < despawnX)
-        {
-            Destroy(gameObject);
-        }*/
     }
 
     public void TakeDamage()
     {
+        // Deactivate the enemy game object
         gameObject.SetActive(false);
     }
 
     private void ResetIdleTimer()
     {
+        // Reset the idle timer to the specified duration
         idleTimer = idleDuration;
     }
 
-    private void flipSprite()
+    private void FlipSprite()
     {
-        if (sprite.flipX == true)
-        {
-            sprite.flipX = false;
-        } 
-        else 
-        {
-            sprite.flipX = true;
-        }
+        // Flip the sprite horizontally
+        sprite.flipX = !sprite.flipX;
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.CompareTag("PlayerSword"))
+        /*if (collision.gameObject.CompareTag("PlayerSword"))
         {
+            // Take damage if collided with player's sword
             TakeDamage();
-        }
+        }*/
+
         // Check if the collision is with the player
         if (collision.gameObject.CompareTag("Player"))
         {
@@ -103,6 +113,7 @@ public class EnemyController : MonoBehaviour
     {
         if (other.CompareTag("PlayerSword"))
         {
+            // Take damage if triggered by player's sword
             TakeDamage();
         }
     }
