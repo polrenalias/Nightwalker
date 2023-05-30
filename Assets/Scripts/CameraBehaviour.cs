@@ -1,7 +1,9 @@
 // Import necessary libraries
 using UnityEngine;
 
-// CameraBehaviour class responsible for controlling the camera's position
+/// <summary>
+/// CameraBehaviour class responsible for controlling the camera's position
+/// </summary>
 public class CameraBehaviour : MonoBehaviour
 {
     // Reference to the player's transform
@@ -19,7 +21,9 @@ public class CameraBehaviour : MonoBehaviour
     // Flag indicating if the camera should move
     private bool moveCamera = true;
 
-    // FixedUpdate is called at a fixed interval
+    /// <summary>
+    /// Handles camera movement, is called at a fixed interval
+    /// </summary>
     private void FixedUpdate()
     {
         // Check if the camera should move

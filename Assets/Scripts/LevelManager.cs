@@ -1,87 +1,165 @@
 // Import necessary libraries
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 
-// LevelManager class responsible for managing level-related data
+/// <summary>
+/// LevelManager class responsible for managing level-related data
+/// </summary>
 public class LevelManager : MonoBehaviour
 {
     // Variables to store level data
-    public int deathCount = 0;
-    public int killCount = 0;
-    public int levelReached = 0;
-    public int currentHealth = 0;
-    public float playedTime = 0.0f;
-    //public DatabaseManager dbManager;
+    private int deathCount = 0;
+    private int killCount = 0;
+    private int lastLevel = 0;
+    private int currentHealth = 0;
+    private float playTime = 0f;
 
+    public DatabaseManager manager;
+
+    /// <summary>
+    /// Initialize necessary components
+    /// </summary>
     void Awake()
     {
-        //dbManager.GetData();
+        SetInitialValues();
     }
 
-    void Update()
+    /// <summary>
+    /// Takes values from the DbManager and sets them on Awake
+    /// </summary>
+    private void SetInitialValues()
     {
-        // Update the played time
-        playedTime += Time.deltaTime;
+        List<int> list = manager.GetDataList();
+
+        if (list != null) {
+            lastLevel = list[0];
+            currentHealth = list[1];
+            playTime = (float)list[2];
+            deathCount = list[3];
+            killCount = list[4];
+        }
     }
 
-    // Increase the death count
+    /// <summary>
+    /// Takes values from the current game and sends them to the DbManager
+    /// </summary>
+    private void SetFinalValues()
+    {
+        List<int> list = new List<int>();
+
+        list.Add(lastLevel);
+        list.Add(currentHealth);
+        list.Add(Convert.ToInt32(playTime));
+        list.Add(deathCount);
+        list.Add(killCount);
+
+        manager.SetDataList(list);
+    }
+
+    /// <summary>
+    /// Increase the death count
+    /// </summary>
     public void IncreaseDeaths()
     {
         deathCount++;
     }
 
-    // Get the death count
+    /// <summary>
+    /// Get the death count
+    /// </summary>
+    /// <returns></returns>
     public int GetDeathCount()
     {
         return deathCount;
     }
 
-    // Increase the kill count
+    /// <summary>
+    /// Increase the kill count
+    /// </summary>
     public void IncreaseKills()
     {
         killCount++;
     }
 
-    // Get the kill count
+    /// <summary>
+    /// Get the kill count
+    /// </summary>
+    /// <returns></returns>
     public int GetKillCount()
     {
         return killCount;
     }
 
-    // Set the last reached level
+    /// <summary>
+    /// Set the last reached level
+    /// </summary>
+    /// <param name="level"></param>
     public void SetLastLevel(int level)
     {
-        levelReached = level;
+        lastLevel = level;
     }
 
-    // Get the last reached level
+    /// <summary>
+    /// Get the last reached level
+    /// </summary>
+    /// <returns></returns>
     public int GetLastLevel()
     {
-        return levelReached;
+        return lastLevel;
     }
 
-    // Set the current health value
+    /// <summary>
+    /// Set the current health value
+    /// </summary>
+    /// <param name="health"></param>
     public void SetCurrentHealth(int health)
     {
         currentHealth = health;
     }
 
-    // Get the current health value
-    public float GetCurrentHealth()
+    /// <summary>
+    /// Get the current health value
+    /// </summary>
+    /// <returns></returns>
+    public int GetCurrentHealth()
     {
         return currentHealth;
     }
 
-    // Set the played time
-    public void SetPlayedTime(float time)
+    /// <summary>
+    /// Set the played time
+    /// </summary>
+    /// <param name="time"></param>
+    public void SetPlayTime(float time)
     {
-        playedTime = time;
+        playTime = time;
     }
 
-    // Get the played time
-    public float GetPlayedTime()
+    /// <summary>
+    /// Get the played time
+    /// </summary>
+    public float GetPlayTime()
     {
-        return playedTime;
+        return playTime;
+    }
+
+    /// <summary>
+    /// Pause handler
+    /// </summary>
+    void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus == true) {
+            SetFinalValues();
+        }
+    }
+
+    /// <summary>
+    /// Exit handler
+    /// </summary>
+    void OnApplicationQuit()
+    {
+        SetFinalValues();
     }
 }

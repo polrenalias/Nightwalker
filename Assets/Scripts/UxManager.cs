@@ -4,7 +4,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine;
 
-// UxManager class responsible for handling user interface interactions
+/// <summary>
+/// UxManager class responsible for handling user interface interactions
+/// </summary>
 public class UxManager : MonoBehaviour, IPointerDownHandler
 {
     public Image audioToggler;
@@ -14,13 +16,19 @@ public class UxManager : MonoBehaviour, IPointerDownHandler
     // Global volume checker
     private bool isMuted = false;
 
+    /// <summary>
+    /// Initialize necessary components
+    /// </summary>
     void Awake()
     {
         Input.backButtonLeavesApp = true;
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
     }
 
-    // Implement the IPointerDown interface method
+    /// <summary>
+    /// Implementation of the IPointerDownHandler interface method
+    /// </summary>
+    /// <param name="eventData">The pointer event data</param>
     public void OnPointerDown(PointerEventData eventData)
     {
         // Check if the clicked object is the "Play" button
@@ -57,9 +65,16 @@ public class UxManager : MonoBehaviour, IPointerDownHandler
         {
             SceneManager.LoadScene("Main");
         }
+        // Check if the clicked object is the "EndButton" button
+        else if (gameObject.name == "EndButton")
+        {
+            SceneManager.LoadScene("Main");
+        }
     }
 
-    // Mute or unmute the application's audio sources
+    /// <summary>
+    /// Mute or unmute the application's audio sources
+    /// </summary>
     public void Mute()
     {
         // Toggle the mute state

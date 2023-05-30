@@ -5,19 +5,20 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Linq;
 
-// PlayerController class responsible for controlling player behavior
+/// <summary>
+/// PlayerController class responsible for controlling player behavior
+/// </summary>
 public class PlayerController : MonoBehaviour
 {
     public float speed;
     public float jumpForce;
     public float knockbackForce;
-    public Animator animator;
     public LayerMask terrainLayer;
     public Rigidbody body;
-    public SpriteRenderer sprite;
-    public Canvas hud;
+    public GameObject character;
     public GameObject healthContainer;
     public GameObject colMessage;
+    public GameObject hitbox;
     public AudioClip swordSwing;
     public AudioClip barrierWave;
     public LevelManager manager;
@@ -26,13 +27,15 @@ public class PlayerController : MonoBehaviour
     public int maxLives = 6;
     public float invincibilityDuration = 2f;
 
+    private SpriteRenderer sprite;
     private Color spriteColor;
     private Collider coll;
     private Image[] hearts;
     private AudioSource audioSource;
-    private int deathCount;
+    private Animator animator;
     private int killCount;
     private int currentLives;
+    private float playTime;
 
     private bool isInvincible = false;
     private bool isMovingLeft = false;
@@ -50,46 +53,71 @@ public class PlayerController : MonoBehaviour
     private float attackCooldown = 1f;
     private float lastAttackTime = 0f;
     
-    // Initialize necessary components
+    /// <summary>
+    /// Initialize necessary components
+    /// </summary>
     void Start()
     {
-        currentLives = maxLives;
+        sprite = GetComponentInChildren<SpriteRenderer>();
         audioSource = GetComponent<AudioSource>();
         body = gameObject.GetComponent<Rigidbody>();
-        animator = gameObject.GetComponentInChildren<Animator>();
+        animator = GetComponentInChildren<Animator>();
         coll = GetComponent<Collider>();
+
+        spriteColor = sprite.color;
+
         FindHearts();
         InitializeHUD();
     }
 
-    // Set the statistics-related values from the LevelManager on start
+    /// <summary>
+    /// Set the statistics-related values from the LevelManager before start
+    /// </summary>
     void Awake()
     {
-        manager.SetLastLevel(1);
-        killCount = manager.GetKillCount();
-        deathCount = manager.GetDeathCount();
+        playTime = manager.GetPlayTime();
+        currentLives = manager.GetCurrentHealth();
+        
+        if (currentLives == 0) {
+            currentLives = maxLives;
+        }
     }
 
-    // Set the statistics-related values from the LevelManager on pause/exit
-    void OnApplicationPause()
+    /// <summary>
+    /// Set the statistics-related values from the LevelManager on pause/exit/death
+    /// </summary>
+    void SetStats()
     {
         manager.SetLastLevel(1);
+        manager.SetPlayTime(playTime);
+        manager.SetCurrentHealth(currentLives);
     }
 
-    // Handle player actions
+    /// <summary>
+    /// Handle player actions
+    /// </summary>
     void Update()
     {
+        playTime += Time.deltaTime;
+
+        if (isInvincible == false) {
+            sprite.color = spriteColor;
+        }
+
         WalkHandler();
         JumpHandler();
         AttackHandler();
         DefenseHandler();       
     }
 
-    // Handle player movement
+    /// <summary>
+    /// Handle player movement
+    /// </summary>
     void WalkHandler()
     {
         body.velocity = new Vector3(body.velocity.x, body.velocity.y, 0f);
 
+        float previousHAxis = 0f;
         float hAxis = 0f;
 
         if (isMovingLeft)
@@ -103,20 +131,24 @@ public class PlayerController : MonoBehaviour
 
         Vector3 movement = new Vector3(hAxis * speed, 0f, 0f);
         body.MovePosition(transform.position + movement * Time.deltaTime);
-        
-        if (hAxis < 0)
+
+        if (hAxis < 0 && character.transform.rotation.eulerAngles.y != -180f)
         {
-            sprite.flipX = true;
+            character.transform.rotation = Quaternion.Euler(0f, -180f, 0f);
         }
-        else if (hAxis > 0)
+        else if (hAxis > 0 && character.transform.rotation.eulerAngles.y != 0f)
         {
-            sprite.flipX = false;
+            character.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
         }
+
+        previousHAxis = hAxis;
 
         animator.SetFloat("speed", Mathf.Abs(hAxis) * speed);
     }
 
-    // Check if the player is grounded and handle jumping
+    /// <summary>
+    /// Check if the player is grounded and handle jumping
+    /// </summary>
     void JumpHandler()
     {
         bool isGrounded = CheckGrounded();
@@ -134,7 +166,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Handle player's attack
+    /// <summary>
+    /// Handle player's attack
+    /// </summary>
     void AttackHandler()
     {
         bool onGround = CheckGrounded();
@@ -152,7 +186,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Handle player's defense (casting barrier)
+    /// <summary>
+    /// Handle player's defense (casting barrier)
+    /// </summary>
     void DefenseHandler()
     {
         if (isDefending && !isBarrierCasted && Time.time - lastBarrierTime >= barrierCooldown && barrierBar.value == 1)
@@ -161,6 +197,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Barrier action handler
+    /// </summary>
     IEnumerator Barrier()
     {   
         // Activate the barrier and play the barrier sound
@@ -178,7 +217,9 @@ public class PlayerController : MonoBehaviour
         StartCoroutine(BarrierCooldown());
     }
 
-    // Set the cooldown time for the defense action
+    /// <summary>
+    /// Set the cooldown time for the defense action
+    /// </summary>
     IEnumerator BarrierCooldown()
     {
         if (firstTimeDefense == true)
@@ -198,7 +239,9 @@ public class PlayerController : MonoBehaviour
         barrierBar.value = 1;
     }
 
-    // Check if the player is grounded by raycasting from the corners of the collider
+    /// <summary>
+    /// Check if the player is grounded by raycasting from the corners of the collider
+    /// </summary>
     bool CheckGrounded()
     {
         float sizeX = coll.bounds.size.x;
@@ -218,13 +261,17 @@ public class PlayerController : MonoBehaviour
         return grounded1 || grounded2 || grounded3 || grounded4;
     }
 
-    // Find all the heart images in the health container
+    /// <summary>
+    /// Find all the heart images in the health container
+    /// </summary>
     void FindHearts()
     {
         hearts = healthContainer.GetComponentsInChildren<Image>();
     }
 
-    // Initialize the heads-up display (HUD) by setting the barrier bar value to 1 and activating the hearts based on the current number of lives
+    /// <summary>
+    /// Initialize the heads-up display (HUD) by setting the barrier bar value to 1 and activating the hearts based on the current number of lives
+    /// </summary>
     void InitializeHUD()
     {
         barrierBar.value = 1;
@@ -240,7 +287,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Update the HUD by activating or deactivating hearts based on the current number of lives
+    /// <summary>
+    /// Update the HUD by activating or deactivating hearts based on the current number of lives
+    /// </summary>
     void UpdateHUD()
     {
         for (int i = 0; i < hearts.Length; i++)
@@ -249,21 +298,28 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Play the sound effect for the sword swing
+    /// <summary>
+    /// Play the sound effect for the sword swing
+    /// </summary>
     private void PlaySwordSound()
     {
         audioSource.clip = swordSwing;
         audioSource.Play();
     }
 
-    // Play the sound effect for the energy barrier
+    /// <summary>
+    /// Play the sound effect for the energy barrier
+    /// </summary>
     private void PlayBarrierSound()
     {
         audioSource.clip = barrierWave;
         audioSource.Play();
     }
 
-    // Handle the player colliding with an invisible wall by preventing movement in the colliding direction
+    /// <summary>
+    /// Handle the player colliding with an invisible wall by preventing movement in the colliding direction
+    /// </summary>
+    /// <param name="collision"></param>
     void OnCollisionStay(Collision collision)
     {
         if (collision.gameObject.CompareTag("InvisibleWall"))
@@ -284,7 +340,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Display a message when the player is colliding with an invisible wall
+    /// <summary>
+    /// Display a message when the player is colliding with an invisible wall
+    /// </summary>
+    /// <param name="collision"></param>
     void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("InvisibleWall"))
@@ -293,7 +352,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Stop displaying a message when the player is no longer colliding with an invisible wall
+    /// <summary>
+    /// Stop displaying a message when the player is no longer colliding with an invisible wall
+    /// </summary>
+    /// <param name="collision"></param>
     void OnCollisionExit(Collision collision)
     {
         if (collision.gameObject.CompareTag("InvisibleWall"))
@@ -302,7 +364,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Handle the player colliding with an enemy by reducing lives, updating the HUD, applying knockback, and starting invincibility frames
+    /// <summary>
+    /// Handle the player colliding with an enemy by reducing lives, updating the HUD, applying knockback, and starting invincibility frames
+    /// </summary>
+    /// <param name="enemy"></param>
     public void HandleEnemyCollision(GameObject enemy)
     {
         if (isBarrierCasted)
@@ -315,7 +380,10 @@ public class PlayerController : MonoBehaviour
 
         if (currentLives <= 0)
         {
+            manager.IncreaseDeaths();
             gameObject.SetActive(false);
+            SetStats();
+            SceneManager.LoadScene("GameOver");
         }
         else
         {
@@ -327,20 +395,24 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Apply invincibility frames for a duration and flash the player sprite during that time
+    /// <summary>
+    /// Apply invincibility frames for a duration and flash the player sprite during that time
+    /// </summary>
+    /// <returns></returns>
     IEnumerator InvincibilityFrames()
     {
         Color originalColor = sprite.color;
         isInvincible = true;
-        StartCoroutine(Flash());
+        yield return StartCoroutine(Flash());
 
         yield return new WaitForSeconds(invincibilityDuration);
-        sprite.color = originalColor;
 
         isInvincible = false;
     }
 
-    // Flash the player sprite between transparent and original color to create a visual effect during invincibility frames
+    /// <summary>
+    /// Flash the player sprite between transparent and original color to create a visual effect during invincibility frames
+    /// </summary>
     IEnumerator Flash()
     {
         Color originalColor = sprite.color;
@@ -356,33 +428,101 @@ public class PlayerController : MonoBehaviour
         sprite.color = originalColor;
     }
 
-    // Set the flag for moving left
+    /// <summary>
+    /// Set the flag for moving left
+    /// </summary>
+    /// <param name="value"></param>
     public void SetMovingLeft(bool value)
     {
         isMovingLeft = value;
     }
 
-    // Set the flag for moving right
+    /// <summary>
+    /// Set the flag for moving right
+    /// </summary>
+    /// <param name="value"></param>
     public void SetMovingRight(bool value)
     {
         isMovingRight = value;
     }
 
-    // Set the flag for jumping
+    /// <summary>
+    /// Set the flag for jumping
+    /// </summary>
+    /// <param name="value"></param>
     public void SetJumping(bool value)
     {
         isJumping = value;
     }
 
-    // Set the flag for attacking
+    /// <summary>
+    /// Set the flag for attacking
+    /// </summary>
+    /// <param name="value"></param>
     public void SetAttacking(bool value)
     {
         isAttacking = value;
     }
 
-    // Set the flag for defending
+    /// <summary>
+    /// Set the flag for defending
+    /// </summary>
+    /// <param name="value"></param>
     public void SetDefending(bool value)
     {
         isDefending = value;
+    }
+
+    /*private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("EnemySword"))
+        {
+            if (isBarrierCasted)
+            {
+                return;
+            }
+            
+            currentLives--;
+            UpdateHUD();
+
+            if (currentLives <= 0)
+            {
+                manager.IncreaseDeaths();
+                gameObject.SetActive(false);
+                SetStats();
+                SceneManager.LoadScene("GameOver");
+            }
+            else
+            {
+                Vector3 knockbackDirection = transform.position - other.transform.position;
+                knockbackDirection.y = 0f;
+                knockbackDirection.Normalize();
+                body.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+                StartCoroutine(InvincibilityFrames());
+            }
+        }
+    }*/
+
+    /// <summary>
+    /// Sets stats on pause
+    /// </summary>
+    void OnApplicationPause(bool pauseStatus) {
+        if (pauseStatus == true) {
+            SetStats();
+        }
+    }
+
+    /// <summary>
+    /// Sets stats on exit
+    /// </summary>
+    void OnApplicationQuit() {
+        SetStats();
+    }
+
+    /// <summary>
+    /// Sets stats on death
+    /// </summary>
+    void OnDestroy() {
+        SetStats();
     }
 }

@@ -3,11 +3,14 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 
-// ButtonController class responsible for handling button interactions
+/// <summary>
+/// ButtonController class responsible for handling button interactions
+/// </summary>
 public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
     // References to game objects in the scene
     public GameObject pauseMenu;
+    public GameObject deathScreen;
     public GameObject pauseButton;
     public GameObject movementControls;
     public GameObject actionControls;
@@ -15,14 +18,19 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
     // Reference to the player controller
     private PlayerController playerController;
 
-    // Awake is called when the script instance is being loaded
+    /// <summary>
+    /// Initializes necessary components, is called when the script instance is being loaded
+    /// </summary>
     private void Awake()
     {
         // Find the PlayerController object in the scene
         playerController = FindObjectOfType<PlayerController>();
     }
 
-    // Called when a pointer is pressed on the object
+    /// <summary>
+    /// Input handling, called when a pointer is pressed on the object
+    /// </summary>
+    /// <param name="eventData">The pointer event data</param>
     public void OnPointerDown(PointerEventData eventData)
     {
         // Check which button was pressed based on its name
@@ -73,9 +81,16 @@ public class ButtonController : MonoBehaviour, IPointerDownHandler, IPointerUpHa
             actionControls.SetActive(true);
             SceneManager.LoadScene("Main");
         }
+        else if (gameObject.name == "BackButton")
+        {
+            SceneManager.LoadScene("Main");
+        }
     }
 
-    // Called when a pointer is released on the object
+    /// <summary>
+    /// Input handling, called when a pointer is released on the object
+    /// </summary>
+    /// <param name="eventData">The pointer event data</param>
     public void OnPointerUp(PointerEventData eventData)
     {
         // Check which button was released based on its name
